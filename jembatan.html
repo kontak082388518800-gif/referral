@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Memuat Aplikasi...</title>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+        iframe { width: 100%; height: 100%; border: none; }
+    </style>
+</head>
+<body>
+    <iframe id="app-frame" src=""></iframe>
+
+    <script>
+        // --- KONFIGURASI WAJIB ---
+        // Ganti dengan URL LENGKAP halaman Google Sites Anda.
+        const GOOGLE_SITES_URL = "https://sites.google.com/view/dasbor-referral/halaman-muka";
+        // -------------------------
+
+        const appFrame = document.getElementById('app-frame');
+        let refId = null;
+
+        if (window.location.hash && window.location.hash.length > 1) {
+            refId = window.location.hash.substring(1);
+        }
+
+        // Buat URL untuk aplikasi utama dengan parameter yang bisa dibaca
+        let appUrl = "index.html"; // Asumsi index.html ada di folder yang sama
+        if (refId) {
+            appUrl += "?ref=" + refId;
+        }
+
+        // Set URL iframe dan juga arahkan parent (Google Sites) ke URL yang benar
+        appFrame.src = appUrl;
+        window.top.location.href = GOOGLE_SITES_URL + (refId ? '#' + refId : '');
+    </script>
+</body>
+</html>

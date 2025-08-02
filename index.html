@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Program Referral Pelanggan v22</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .card { background: white; border-radius: 1rem; padding: 1.5rem; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); }
+        .btn { padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s; }
+        .btn-primary { background-color: #14b8a6; color: white; }
+        .btn-primary:hover { background-color: #0d9488; }
+        .input-field { width: 100%; padding: 0.75rem; border: 1px solid #cbd5e0; border-radius: 0.5rem; }
+        .input-field:disabled { background-color: #f1f5f9; cursor: not-allowed; }
+        .hidden { display: none; }
+        #notification { z-index: 100; }
+    </style>
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+</head>
+<body class="bg-gray-100">
+
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <!-- Notification Bar -->
+    <div id="notification" class="hidden fixed top-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg"></div>
+
+    <div class="container mx-auto max-w-4xl p-4">
+        <!-- Login View -->
+        <div id="login-view" class="card text-center">
+            <h1 class="text-3xl font-bold text-teal-600 mb-4">Selamat Datang!</h1>
+            <p class="text-gray-600 mb-6">Masuk untuk melihat dasbor referral Anda.</p>
+            <div class="space-y-4 max-w-sm mx-auto">
+                <input type="tel" id="login-phone" class="input-field" placeholder="Nomor WA Anda (cth: 62812...)">
+                <input type="password" id="login-password" class="input-field" placeholder="Password Anda">
+                <button id="login-btn" class="btn btn-primary w-full">Masuk</button>
+                <div class="flex justify-between text-sm">
+                    <a href="#" id="show-forgot-password-link" class="text-gray-500 hover:text-teal-600">Lupa Password?</a>
+                    <a href="#" id="show-register-link" class="text-teal-600 font-semibold">Daftar di sini</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Register View -->
+        <div id="register-view" class="hidden card text-center">
+             <h1 class="text-3xl font-bold text-teal-600 mb-4">Daftar Mitra Baru</h1>
+             <div id="referrer-info-box" class="hidden text-sm text-center bg-green-50 p-3 rounded-md mb-4 border border-green-200">
+                <p class="text-green-800">Anda diundang oleh: <strong id="register-referrer-name"></strong></p>
+             </div>
+             <div class="space-y-4 max-w-sm mx-auto">
+                <input type="text" id="register-name" class="input-field" placeholder="Nama Panggilan Anda">
+                <input type="tel" id="register-phone" class="input-field" placeholder="Nomor WA Anda (cth: 62812...)">
+                <input type="password" id="register-password" class="input-field" placeholder="Buat Password">
+                <input type="tel" id="register-referrer-phone" class="input-field" placeholder="Nomor WA Pengundang (Opsional)">
+                <button id="register-btn" class="btn btn-primary w-full">Daftar Sekarang</button>
+                <p class="text-sm text-gray-500">Sudah punya akun? <a href="#" id="show-login-link-from-register" class="text-teal-600 font-semibold">Masuk di sini</a></p>
+            </div>
+        </div>
+        
+        <!-- Forgot Password View -->
+        <div id="forgot-password-view" class="hidden card text-center">
+             <h1 class="text-3xl font-bold text-teal-600 mb-4">Lupa Password</h1>
+             <p class="text-gray-600 mb-6">Masukkan nomor WA Anda yang terdaftar untuk mendapatkan kode pemulihan.</p>
+             <div class="space-y-4 max-w-sm mx-auto">
+                <input type="tel" id="forgot-phone" class="input-field" placeholder="Nomor WA Anda (cth: 62812...)">
+                <button id="request-recovery-btn" class="btn btn-primary w-full">Minta Kode Pemulihan</button>
+                <a href="#" id="back-to-login-link" class="text-sm text-gray-500 hover:text-teal-600">Kembali ke Login</a>
+            </div>
+        </div>
+
+        <!-- Referrer Dashboard View -->
+        <div id="dashboard-view" class="hidden space-y-6">
+            <div class="card"><div class="flex justify-between items-center"><div><h1 class="text-2xl font-bold text-teal-600">Dasbor Referral Anda</h1><p class="text-gray-600">Selamat datang, <strong id="user-name-display"></strong>!</p></div><button id="logout-btn" class="btn btn-secondary text-sm">Keluar</button></div></div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div class="card text-center"><p class="text-gray-500">Total Diskon Terkumpul</p><p id="total-discount" class="text-4xl font-bold text-teal-600">0%</p></div><div class="card text-center"><p class="text-gray-500">Referral Berhasil</p><p id="successful-referrals" class="text-4xl font-bold text-green-500">0</p></div></div>
+            <div class="card"><h2 class="text-xl font-bold mb-3">Bagikan Link Ajaib Anda</h2><p class="text-gray-600 mb-4">Setiap teman yang membeli dari link ini akan menambah diskon Anda 2%!</p><input type="text" id="referral-link" class="input-field bg-gray-100" readonly><div class="flex gap-2 mt-2"><button id="copy-link-btn" class="btn btn-secondary flex-1">Salin Link</button><a id="share-wa-btn" href="#" target="_blank" class="btn btn-primary flex-1 text-center">Bagikan ke WA</a></div></div>
+            <div class="card"><h2 class="text-xl font-bold mb-3">Laporan Keuntungan Anda</h2><div class="overflow-x-auto"><table class="w-full text-left text-sm"><thead class="bg-gray-50"><tr><th class="p-2">Nama Teman</th><th class="p-2">Tanggal</th><th class="p-2">Status</th></tr></thead><tbody id="referral-list"><tr><td colspan="3" class="text-center p-4 text-gray-500">Belum ada referral...</td></tr></tbody></table></div></div>
+            <div class="card text-center"><h2 class="text-xl font-bold mb-3">Tebus Hadiah Anda</h2><p id="claim-info" class="text-gray-600 mb-4">Anda bisa menebus total diskon setelah mencapai 20% (10 referral berhasil).</p><button id="claim-reward-btn" class="btn btn-primary w-full md:w-1/2" disabled>Kirim Konfirmasi Klaim ke Admin</button></div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const firebaseConfig = {
+            apiKey: "AIzaSyCPHmKMf_dEddmsKbpiJdHPHS94mRbj9sA",
+            authDomain: "aplikasi-referral-saya.firebaseapp.com",
+            projectId: "aplikasi-referral-saya",
+            storageBucket: "aplikasi-referral-saya.appspot.com",
+            messagingSenderId: "561988352347",
+            appId: "1:561988352347:web:a2306580f558578364427e"
+        };
+        
+        if (!firebaseConfig || !firebaseConfig.projectId || firebaseConfig.projectId === "your-project-id") {
+            document.body.innerHTML = `<div class="p-8 bg-red-100 text-red-800 text-center"><strong>Error Konfigurasi:</strong> Anda belum memasukkan konfigurasi Firebase Anda di dalam file HTML. Harap edit file HTML dan ganti placeholder 'firebaseConfig' dengan kode dari proyek Firebase Anda.</div>`;
+            return;
+        }
+
+        try { 
+            firebase.initializeApp(firebaseConfig); 
+        } catch (e) { 
+            console.error(e); 
+            document.body.innerHTML = `<div class="p-8 bg-red-100 text-red-800 text-center"><strong>Error:</strong> Konfigurasi Firebase tidak valid.</div>`; 
+            return; 
+        }
+
+        const db = firebase.firestore();
+        const ui = {
+            loginView: document.getElementById('login-view'),
+            registerView: document.getElementById('register-view'),
+            forgotPasswordView: document.getElementById('forgot-password-view'),
+            dashboardView: document.getElementById('dashboard-view'),
+            notification: document.getElementById('notification'),
+            loginPhone: document.getElementById('login-phone'),
+            loginPassword: document.getElementById('login-password'),
+            loginBtn: document.getElementById('login-btn'),
+            showRegisterLink: document.getElementById('show-register-link'),
+            showForgotPasswordLink: document.getElementById('show-forgot-password-link'),
+            registerName: document.getElementById('register-name'),
+            registerPhone: document.getElementById('register-phone'),
+            registerPassword: document.getElementById('register-password'),
+            registerReferrerPhone: document.getElementById('register-referrer-phone'),
+            registerBtn: document.getElementById('register-btn'),
+            showLoginLinkFromRegister: document.getElementById('show-login-link-from-register'),
+            referrerInfoBox: document.getElementById('referrer-info-box'),
+            registerReferrerName: document.getElementById('register-referrer-name'),
+            forgotPhone: document.getElementById('forgot-phone'),
+            requestRecoveryBtn: document.getElementById('request-recovery-btn'),
+            backToLoginLink: document.getElementById('back-to-login-link'),
+            userNameDisplay: document.getElementById('user-name-display'),
+            logoutBtn: document.getElementById('logout-btn'),
+            totalDiscount: document.getElementById('total-discount'),
+            successfulReferrals: document.getElementById('successful-referrals'),
+            referralLink: document.getElementById('referral-link'),
+            copyLinkBtn: document.getElementById('copy-link-btn'),
+            shareWaBtn: document.getElementById('share-wa-btn'),
+            referralList: document.getElementById('referral-list'),
+            claimRewardBtn: document.getElementById('claim-reward-btn'),
+            claimInfo: document.getElementById('claim-info'),
+        };
+
+        let currentUser = null;
+        let appSettings = {};
+        let unsubscribeReferrals = null;
+
+        const showView = (viewId) => {
+            ['login-view', 'register-view', 'forgot-password-view', 'dashboard-view'].forEach(id => {
+                const view = document.getElementById(id);
+                if(view) view.classList.add('hidden');
+            });
+            const viewToShow = document.getElementById(viewId);
+            if(viewToShow) viewToShow.classList.remove('hidden');
+
+            if (viewId === 'register-view') {
+                const referrerInfo = sessionStorage.getItem('referrerInfo');
+                if (referrerInfo) {
+                    const { id, name } = JSON.parse(referrerInfo);
+                    ui.registerReferrerName.textContent = name;
+                    ui.referrerInfoBox.classList.remove('hidden');
+                    ui.registerReferrerPhone.value = id;
+                    ui.registerReferrerPhone.disabled = true;
+                } else {
+                    ui.referrerInfoBox.classList.add('hidden');
+                    ui.registerReferrerPhone.value = '';
+                    ui.registerReferrerPhone.disabled = false;
+                }
+            }
+        };
+
+        const showNotification = (message) => {
+            ui.notification.textContent = message;
+            ui.notification.classList.remove('hidden');
+            setTimeout(() => ui.notification.classList.add('hidden'), 3000);
+        };
+
+        // --- FUNGSI LENGKAP DIKEMBALIKAN ---
+        const handleLogin = async () => {
+            let phone = ui.loginPhone.value.trim().replace(/\D/g, '');
+            const password = ui.loginPassword.value.trim();
+            if (!phone || !password) { showNotification("Nomor WA dan Password wajib diisi."); return; }
+            if (phone.startsWith('0')) phone = '62' + phone.substring(1);
+
+            const userRef = db.collection('referrers').doc(phone);
+            const doc = await userRef.get();
+
+            if (doc.exists && doc.data().password === password) {
+                currentUser = { id: phone, name: doc.data().name };
+                sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+                showDashboard();
+            } else {
+                showNotification("Nomor WA atau Password salah.");
+            }
+        };
+
+        const handleRegister = async () => {
+            const name = ui.registerName.value.trim();
+            let phone = ui.registerPhone.value.trim().replace(/\D/g, '');
+            const password = ui.registerPassword.value.trim();
+            if (!name || !phone || !password) { showNotification("Semua kolom wajib diisi."); return; }
+            if (phone.startsWith('0')) phone = '62' + phone.substring(1);
+
+            const userRef = db.collection('referrers').doc(phone);
+            const doc = await userRef.get();
+            if (doc.exists) {
+                showNotification("Nomor WA ini sudah terdaftar.");
+                return;
+            }
+            
+            const newUser = { name, password, successfulReferrals: 0, createdAt: new Date() };
+            
+            let referrerInfo = sessionStorage.getItem('referrerInfo');
+            if (referrerInfo) {
+                const { id, name } = JSON.parse(referrerInfo);
+                newUser.invitedBy = { id, name };
+            } else {
+                let referrerPhone = ui.registerReferrerPhone.value.trim().replace(/\D/g, '');
+                if (referrerPhone) {
+                    if (referrerPhone.startsWith('0')) referrerPhone = '62' + referrerPhone.substring(1);
+                    const referrerDoc = await db.collection('referrers').doc(referrerPhone).get();
+                    if (referrerDoc.exists) {
+                        newUser.invitedBy = { id: referrerPhone, name: referrerDoc.data().name };
+                    } else {
+                        if (appSettings.adminReferrerId) {
+                            newUser.invitedBy = { id: appSettings.adminReferrerId, name: 'Admin' };
+                        }
+                    }
+                } else {
+                     if (appSettings.adminReferrerId) {
+                        newUser.invitedBy = { id: appSettings.adminReferrerId, name: 'Admin' };
+                    }
+                }
+            }
+
+            await userRef.set(newUser);
+            sessionStorage.removeItem('referrerInfo');
+            showNotification("Pendaftaran berhasil! Silakan masuk.");
+            showView('login-view');
+        };
+        
+        const handleRecoveryRequest = async () => {
+            let phone = ui.forgotPhone.value.trim().replace(/\D/g, '');
+            if (!phone) { showNotification("Nomor WA wajib diisi."); return; }
+            if (phone.startsWith('0')) phone = '62' + phone.substring(1);
+
+            const userRef = db.collection('referrers').doc(phone);
+            const doc = await userRef.get();
+
+            if (!doc.exists) {
+                showNotification("Nomor WA tidak terdaftar.");
+                return;
+            }
+
+            const recoveryCode = Math.floor(100000 + Math.random() * 900000);
+            const recoveryCodeExpires = new Date(Date.now() + 15 * 60 * 1000);
+
+            await userRef.update({ recoveryCode, recoveryCodeExpires });
+            
+            const adminWA = appSettings.adminWhatsappNumber;
+            if (!adminWA) { showNotification("Fitur ini belum aktif. Hubungi admin."); return; }
+            
+            const message = `Halo Admin, saya lupa password.\n\nNomor WA: ${phone}\nKode Pemulihan: ${recoveryCode}\n\nMohon bantuannya untuk reset password saya. Terima kasih.`;
+            window.open(`https://wa.me/${adminWA}?text=${encodeURIComponent(message)}`, '_blank');
+            showNotification("Permintaan terkirim! Silakan kirim pesan ke Admin via WhatsApp.");
+        };
+
+        const showDashboard = () => {
+            if (!currentUser || !appSettings.publicUrl) return;
+            ui.userNameDisplay.textContent = currentUser.name;
+            const referralLink = `${appSettings.publicUrl}?ref=${currentUser.id}`;
+            ui.referralLink.value = referralLink;
+            const shareText = `Eh, aku nemu produk keren nih! Coba deh cek, kalau kamu daftar lewat link ini nanti aku bisa dapet diskon lho, hehe. Makasih ya! ${referralLink}`;
+            ui.shareWaBtn.href = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+            showView('dashboard-view');
+            listenForReferrals();
+        };
+
+        const listenForReferrals = () => {
+            if (unsubscribeReferrals) unsubscribeReferrals();
+            unsubscribeReferrals = db.collection('referrals').where('referrerId', '==', currentUser.id)
+                .onSnapshot(snapshot => {
+                    let successful = 0;
+                    let referrals = [];
+                    snapshot.forEach(doc => referrals.push(doc.data()));
+                    referrals.sort((a, b) => b.timestamp.toDate() - a.timestamp.toDate());
+
+                    ui.referralList.innerHTML = referrals.length === 0 ? `<tr><td colspan="3" class="text-center p-4 text-gray-500">Ajak teman pertamamu!</td></tr>` : '';
+                    referrals.forEach(data => {
+                        if (data.status === 'successful') successful++;
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td class="p-2 border-t">${data.newCustomerName}</td><td class="p-2 border-t">${new Date(data.timestamp.toDate()).toLocaleDateString('id-ID')}</td><td class="p-2 border-t"><span class="px-2 py-1 text-xs font-semibold rounded-full ${data.status === 'successful' ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}">${data.status}</span></td>`;
+                        ui.referralList.appendChild(row);
+                    });
+                    
+                    const totalDiscount = Math.min(successful * 2, 100);
+                    ui.successfulReferrals.textContent = successful;
+                    ui.totalDiscount.textContent = `${totalDiscount}%`;
+                    
+                    if (totalDiscount >= 20) {
+                        ui.claimRewardBtn.disabled = false;
+                        ui.claimInfo.textContent = `Selamat! Anda bisa mengklaim diskon ${totalDiscount}% Anda sekarang.`;
+                    } else {
+                        ui.claimRewardBtn.disabled = true;
+                        ui.claimInfo.textContent = `Anda bisa menebus diskon setelah mencapai 20% (10 referral berhasil).`;
+                    }
+                });
+        };
+        // --- AKHIR FUNGSI LENGKAP ---
+
+        const checkUrlParams = async () => {
+            let refId = null;
+            if (window.location.hash && window.location.hash.length > 1) {
+                refId = window.location.hash.substring(1);
+            }
+
+            if (refId) {
+                const referrerDoc = await db.collection('referrers').doc(refId).get();
+                if (referrerDoc.exists) {
+                    const referrerData = referrerDoc.data();
+                    sessionStorage.setItem('referrerInfo', JSON.stringify({ id: refId, name: referrerData.name }));
+                    showView('register-view');
+                } else {
+                    sessionStorage.removeItem('referrerInfo');
+                    showView('login-view');
+                }
+            } else {
+                sessionStorage.removeItem('referrerInfo');
+                const savedUser = sessionStorage.getItem('currentUser');
+                if (savedUser) { 
+                    currentUser = JSON.parse(savedUser); 
+                    if(document.getElementById('dashboard-view')) showDashboard();
+                } 
+                else { showView('login-view'); }
+            }
+        };
+
+        const init = async () => {
+            try {
+                const settingsDoc = await db.collection('settings').doc('appConfig').get();
+                if (settingsDoc.exists) {
+                    appSettings = settingsDoc.data();
+                }
+                checkUrlParams();
+            } catch (e) {
+                console.error("Firestore error:", e);
+                document.body.innerHTML = `<div class="p-8 bg-red-100 text-red-800 text-center"><strong>Error Koneksi:</strong> Gagal terhubung ke database. Pastikan 'firebaseConfig' sudah benar dan aturan keamanan Firestore sudah diatur.</div>`;
+            }
+        };
+        
+        ui.loginBtn.addEventListener('click', handleLogin);
+        ui.registerBtn.addEventListener('click', handleRegister);
+        ui.showRegisterLink.addEventListener('click', (e) => { e.preventDefault(); showView('register-view'); });
+        ui.showLoginLinkFromRegister.addEventListener('click', (e) => { e.preventDefault(); showView('login-view'); });
+        // Tambahkan event listener yang hilang
+        if(ui.showForgotPasswordLink) ui.showForgotPasswordLink.addEventListener('click', (e) => { e.preventDefault(); showView('forgot-password-view'); });
+        if(ui.backToLoginLink) ui.backToLoginLink.addEventListener('click', (e) => { e.preventDefault(); showView('login-view'); });
+        if(ui.requestRecoveryBtn) ui.requestRecoveryBtn.addEventListener('click', handleRecoveryRequest);
+        if(ui.logoutBtn) ui.logoutBtn.addEventListener('click', () => { sessionStorage.clear(); currentUser = null; if(unsubscribeReferrals) unsubscribeReferrals(); window.location.search = ''; showView('login-view'); });
+        if(ui.copyLinkBtn) ui.copyLinkBtn.addEventListener('click', () => { ui.referralLink.select(); document.execCommand('copy'); showNotification("Link berhasil disalin!"); });
+        if(ui.claimRewardBtn) ui.claimRewardBtn.addEventListener('click', () => {
+            const adminWA = appSettings.adminWhatsappNumber;
+            if (!adminWA) { showNotification("Nomor WA Admin belum diatur."); return; }
+            const discount = ui.totalDiscount.textContent;
+            const message = `Halo Admin, saya ${currentUser.name} (${currentUser.id}) ingin melakukan klaim diskon referral saya sebesar ${discount}. Mohon diproses. Terima kasih.`;
+            window.open(`https://wa.me/${adminWA}?text=${encodeURIComponent(message)}`, '_blank');
+        });
+
+        init();
+    });
+    </script>
+</body>
+</html>
